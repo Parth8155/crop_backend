@@ -384,15 +384,24 @@ def load_model():
     try:
         # Load your trained model
         model_path = os.getenv("MODEL_PATH", "my_model.keras")
+        logger.info(f"Attempting to load model from: {model_path}")
+        logger.info(f"Current working directory: {os.getcwd()}")
+        logger.info(f"File exists check: {os.path.exists(model_path)}")
+        
         if os.path.exists(model_path):
+            logger.info("Model file found, loading...")
             model = tf.keras.models.load_model(model_path)
             logger.info(f"Model loaded successfully from {model_path}")
+            logger.info(f"Model input shape: {model.input_shape}")
+            logger.info(f"Model output shape: {model.output_shape}")
             return True
         else:
             logger.warning(f"Model file not found at {model_path}. Using mock predictions.")
+            logger.info(f"Files in current directory: {os.listdir('.')}")
             return False
     except Exception as e:
         logger.error(f"Error loading model: {e}")
+        logger.error(f"Exception type: {type(e).__name__}")
         return False
 
 def preprocess_image(image_bytes):
@@ -427,6 +436,7 @@ def predict_with_model(image_array):
     global model
     try:
         if model is not None:
+            logger.info("Using actual model for prediction")
             # Make prediction
             predictions = model.predict(image_array, verbose=0)
             predicted_class_index = np.argmax(predictions[0])
@@ -441,30 +451,32 @@ def predict_with_model(image_array):
             else:
                 disease_name = "unknown"
             
-            # logger.info(f"Prediction details:")
-            # logger.info(f"  Raw prediction array shape: {predictions.shape}")
-            # logger.info(f"  Predicted class index: {predicted_class_index}")
-            # logger.info(f"  Confidence: {confidence:.6f}")
-            # logger.info(f"  Original DISEASE_CLASSES: {DISEASE_CLASSES}")
-            # logger.info(f"  Sorted class_names: {class_names}")
-            # logger.info(f"  Final prediction: {disease_name}")
+            logger.info(f"Prediction details:")
+            logger.info(f"  Raw prediction array shape: {predictions.shape}")
+            logger.info(f"  Predicted class index: {predicted_class_index}")
+            logger.info(f"  Confidence: {confidence:.6f}")
+            logger.info(f"  Original DISEASE_CLASSES: {DISEASE_CLASSES}")
+            logger.info(f"  Sorted class_names: {class_names}")
+            logger.info(f"  Final prediction: {disease_name}")
             
             return disease_name, confidence
         else:
             # Fallback to mock prediction if model not loaded
+            logger.warning("Model is None, using mock prediction")
             return get_mock_prediction()
     except Exception as e:
         logger.error(f"Error during model prediction: {e}")
+        logger.warning("Falling back to mock prediction due to error")
         return get_mock_prediction()
 
 def get_mock_prediction():
     """Generate mock prediction for demonstration"""
     import random
     
-    # Select a random disease for demo
+    # Select a random disease for demo - use actual disease names from DISEASE_CLASSES
     disease_names = [
-        "leaf spot1", "bacterial blight1", "brown spot1", "anthracnose1", 
-        "leaf blight1", "mosaic1", "healthy1"
+        "leaf spot", "bacterial blight", "brown spot", "anthracnose", 
+        "leaf blight", "mosaic", "healthy"
     ]
     disease_name = random.choice(disease_names)
     confidence = random.uniform(0.75, 0.95)  # High confidence for demo
@@ -501,6 +513,19 @@ async def cors_debug():
         "cors_origins": cors_origins,
         "environment": os.getenv("ENVIRONMENT", "unknown"),
         "cors_origins_env": os.getenv("CORS_ORIGINS", "not set")
+    }
+
+@app.get("/debug-mock")
+async def debug_mock_prediction():
+    """Debug endpoint to test mock prediction functionality"""
+    mock_disease, mock_confidence = get_mock_prediction()
+    return {
+        "mock_prediction": {
+            "disease": mock_disease,
+            "confidence": mock_confidence,
+            "is_in_treatment_db": mock_disease in TREATMENT_DATABASE,
+            "available_treatments": list(TREATMENT_DATABASE.keys())
+        }
     }
 
 @app.get("/model-debug")
