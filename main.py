@@ -76,7 +76,7 @@ class HealthCheck(BaseModel):
     timestamp: str
     model_loaded: bool
 
-# Disease classes - your specific diseases
+# Disease classes - your specific diseases (keep original order)
 DISEASE_CLASSES = [
     "anthracnose", "gummosis", "leaf miner", "red rust",
     "bacterial blight", "brown spot", "green mite", "mosaic",
@@ -84,8 +84,9 @@ DISEASE_CLASSES = [
     "leaf spot", "streak virus", "leaf curl", "septoria leaf spot",
     "verticillium wilt", "healthy"
  ]
-DISEASE_CLASSES=sorted(DISEASE_CLASSES)
-print(DISEASE_CLASSES)
+# Don't sort here - sort at prediction time to match Jupyter notebook exactly
+print("Original DISEASE_CLASSES:", DISEASE_CLASSES)
+print("Sorted DISEASE_CLASSES:", sorted(DISEASE_CLASSES))
 
 # Treatment recommendations for your disease classes
 TREATMENT_DATABASE = {
@@ -422,7 +423,7 @@ def preprocess_image(image_bytes):
         raise HTTPException(status_code=400, detail="Invalid image format")
 
 def predict_with_model(image_array):
-    """Make prediction using the loaded model - matches Jupyter notebook logic"""
+    """Make prediction using the loaded model - matches Jupyter notebook logic exactly"""
     global model
     try:
         if model is not None:
@@ -431,14 +432,22 @@ def predict_with_model(image_array):
             predicted_class_index = np.argmax(predictions[0])
             confidence = float(np.max(predictions[0]))
             
-            # Get disease name from index using sorted labels (matches Jupyter notebook)
-            sorted_disease_classes = sorted(DISEASE_CLASSES)
-            if predicted_class_index < len(sorted_disease_classes):
-                disease_name = sorted_disease_classes[predicted_class_index]
+            # Sort disease classes exactly like Jupyter notebook at prediction time
+            class_names = sorted([d for d in DISEASE_CLASSES])
+            
+            # Get disease name from index using sorted labels (matches Jupyter notebook exactly)
+            if predicted_class_index < len(class_names):
+                disease_name = class_names[predicted_class_index]
             else:
                 disease_name = "unknown"
             
-            logger.info(f"Prediction: {disease_name} (index: {predicted_class_index}, confidence: {confidence:.3f})")
+            logger.info(f"Prediction details:")
+            logger.info(f"  Raw prediction array shape: {predictions.shape}")
+            logger.info(f"  Predicted class index: {predicted_class_index}")
+            logger.info(f"  Confidence: {confidence:.6f}")
+            logger.info(f"  Original DISEASE_CLASSES: {DISEASE_CLASSES}")
+            logger.info(f"  Sorted class_names: {class_names}")
+            logger.info(f"  Final prediction: {disease_name}")
             
             return disease_name, confidence
         else:
@@ -499,11 +508,12 @@ async def model_debug():
     """Debug endpoint to check model configuration"""
     return {
         "model_loaded": model is not None,
-        "disease_classes": DISEASE_CLASSES,
-        "sorted_disease_classes": sorted(DISEASE_CLASSES),
+        "original_disease_classes": DISEASE_CLASSES,
+        "sorted_disease_classes": sorted([d for d in DISEASE_CLASSES]),
         "total_classes": len(DISEASE_CLASSES),
         "model_path": os.getenv("MODEL_PATH", "my_model.keras"),
-        "preprocessing": "ResNet50 preprocess_input"
+        "preprocessing": "ResNet50 preprocess_input",
+        "sorting_note": "Classes are sorted at prediction time, not at module level"
     }
 
 @app.options("/predict")
@@ -572,7 +582,9 @@ async def get_supported_diseases():
     """Get list of supported diseases"""
     return {
         "supported_diseases": DISEASE_CLASSES,
-        "total_classes": len(DISEASE_CLASSES)
+        "sorted_diseases": sorted([d for d in DISEASE_CLASSES]),
+        "total_classes": len(DISEASE_CLASSES),
+        "note": "Predictions use sorted order, original order preserved for reference"
     }
 
 @app.get("/disease/{disease_name}")
