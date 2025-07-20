@@ -440,6 +440,15 @@ async def startup_event():
     load_model()
 
 @app.get("/", response_model=HealthCheck)
+async def root():
+    """Root endpoint - health check"""
+    return HealthCheck(
+        status="healthy",
+        timestamp=datetime.now().isoformat(),
+        model_loaded=model is not None
+    )
+
+@app.get("/health", response_model=HealthCheck)
 async def health_check():
     """Health check endpoint"""
     return HealthCheck(
@@ -530,4 +539,12 @@ if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
     
-    uvicorn.run(app, host=host, port=port)
+    # Azure App Service automatically provides PORT environment variable
+    # For local development, fallback to 8000
+    uvicorn.run(
+        app, 
+        host=host, 
+        port=port,
+        log_level="info",
+        access_log=True
+    )

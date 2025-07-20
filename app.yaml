@@ -1,0 +1,12 @@
+runtime: python
+env: python
+service: crop-disease-api
+
+instance_class: F1
+automatic_scaling:
+  min_instances: 1
+  max_instances: 10
+
+handlers:
+- url: /.*
+  script: auto

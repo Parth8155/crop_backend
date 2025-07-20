@@ -1,0 +1,9 @@
+@echo off
+echo 🚀 Deploying to Azure App Service...
+
+REM Build and deploy backend
+echo 📦 Installing dependencies...
+pip install -r requirements.txt
+
+echo 🔧 Starting application...
+python -m uvicorn main:app --host 0.0.0.0 --port %PORT% --workers 1
