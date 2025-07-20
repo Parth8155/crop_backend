@@ -13,19 +13,32 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
-# Configure logging
-log_level = os.getenv("LOG_LEVEL", "INFO")
-logging.basicConfig(level=getattr(logging, log_level))
+# Configure basic logging first
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Load environment variables - only in development
+if os.getenv("AZURE_FUNCTIONS_ENVIRONMENT") is None and os.getenv("WEBSITE_INSTANCE_ID") is None:
+    load_dotenv()
+    logger.info("Loaded environment variables from .env file")
+
+# Configure logging with environment variable
+log_level = os.getenv("LOG_LEVEL", "INFO")
+logging.basicConfig(level=getattr(logging, log_level), force=True)
 
 app = FastAPI(
     title="Crop Disease Detection API",
     description="AI-powered crop disease detection and treatment recommendation system",
     version="1.0.0"
 )
+
+# Log deployment environment info
+logger.info(f"Starting application in environment: {os.getenv('ENVIRONMENT', 'unknown')}")
+logger.info(f"Azure instance ID: {os.getenv('WEBSITE_INSTANCE_ID', 'not set')}")
+logger.info(f"PORT: {os.getenv('PORT', 'not set')}")
+logger.info(f"HOST: {os.getenv('HOST', 'not set')}")
+logger.info(f"Python path: {os.getcwd()}")
+logger.info(f"Model path: {os.getenv('MODEL_PATH', 'my_model.keras')}")
 
 # CORS middleware - use environment variable with Azure-friendly fallback
 cors_origins_env = os.getenv("CORS_ORIGINS", "")
