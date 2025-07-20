@@ -10,6 +10,7 @@ import io
 import base64
 import logging
 import os
+import sys
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -398,7 +399,7 @@ add_log_message("INFO", f"Current working directory: {os.getcwd()}")
 add_log_message("INFO", f"Model path: {os.getenv('MODEL_PATH', 'my_model.keras')}")
 
 def load_model():
-    """Load the pre-trained model"""
+    """Load the pre-trained model with compatibility handling"""
     global model
     try:
         # Load your trained model
@@ -410,10 +411,76 @@ def load_model():
         logger.info(f"File exists check: {os.path.exists(model_path)}")
         add_log_message("INFO", f"File exists check: {os.path.exists(model_path)}")
         
+        # Log TensorFlow/Keras version info
+        logger.info(f"TensorFlow version: {tf.__version__}")
+        add_log_message("INFO", f"TensorFlow version: {tf.__version__}")
+        
         if os.path.exists(model_path):
             logger.info("Model file found, loading...")
             add_log_message("INFO", "Model file found, loading...")
-            model = tf.keras.models.load_model(model_path)
+            
+            # Try multiple loading methods for compatibility
+            try:
+                # Method 1: Standard loading
+                model = tf.keras.models.load_model(model_path)
+                logger.info("Model loaded successfully using standard method")
+                add_log_message("INFO", "Model loaded successfully using standard method")
+            except Exception as e1:
+                logger.warning(f"Standard loading failed: {e1}")
+                add_log_message("WARNING", f"Standard loading failed: {e1}")
+                
+                try:
+                    # Method 2: Load with custom objects and compile=False
+                    model = tf.keras.models.load_model(model_path, compile=False)
+                    logger.info("Model loaded successfully with compile=False")
+                    add_log_message("INFO", "Model loaded successfully with compile=False")
+                    
+                    # Recompile the model
+                    model.compile(
+                        optimizer='adam',
+                        loss='categorical_crossentropy',
+                        metrics=['accuracy']
+                    )
+                    logger.info("Model recompiled successfully")
+                    add_log_message("INFO", "Model recompiled successfully")
+                except Exception as e2:
+                    logger.warning(f"Loading with compile=False failed: {e2}")
+                    add_log_message("WARNING", f"Loading with compile=False failed: {e2}")
+                    
+                    try:
+                        # Method 3: Load weights only approach
+                        logger.info("Attempting to load weights only...")
+                        add_log_message("INFO", "Attempting to load weights only...")
+                        
+                        # Create a basic model structure
+                        from tensorflow.keras.applications import ResNet50
+                        from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
+                        from tensorflow.keras.models import Model
+                        
+                        # Create base model
+                        base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+                        base_model.trainable = False
+                        
+                        # Add custom layers
+                        inputs = tf.keras.Input(shape=(224, 224, 3))
+                        x = base_model(inputs, training=False)
+                        x = GlobalAveragePooling2D()(x)
+                        x = Dropout(0.3)(x)
+                        outputs = Dense(18, activation='softmax')(x)
+                        
+                        model = Model(inputs, outputs)
+                        logger.info("Base model structure created, attempting to load weights...")
+                        add_log_message("INFO", "Base model structure created, attempting to load weights...")
+                        
+                        # Try to load weights
+                        model.load_weights(model_path)
+                        logger.info("Model weights loaded successfully")
+                        add_log_message("INFO", "Model weights loaded successfully")
+                    except Exception as e3:
+                        logger.error(f"All loading methods failed. Final error: {e3}")
+                        add_log_message("ERROR", f"All loading methods failed. Final error: {e3}")
+                        raise e3
+            
             logger.info(f"Model loaded successfully from {model_path}")
             add_log_message("INFO", f"Model loaded successfully from {model_path}")
             logger.info(f"Model input shape: {model.input_shape}")
@@ -581,7 +648,11 @@ async def model_debug():
         "total_classes": len(DISEASE_CLASSES),
         "model_path": os.getenv("MODEL_PATH", "my_model.keras"),
         "preprocessing": "ResNet50 preprocess_input",
-        "sorting_note": "Classes are sorted at prediction time, not at module level"
+        "sorting_note": "Classes are sorted at prediction time, not at module level",
+        "tensorflow_version": tf.__version__,
+        "model_file_exists": os.path.exists(os.getenv("MODEL_PATH", "my_model.keras")),
+        "model_file_size": os.path.getsize(os.getenv("MODEL_PATH", "my_model.keras")) if os.path.exists(os.getenv("MODEL_PATH", "my_model.keras")) else 0,
+        "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     }
 
 @app.options("/predict")
