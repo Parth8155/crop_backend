@@ -27,14 +27,24 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware - use environment variable
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
-print(cors_origins)
+# CORS middleware - use environment variable with Azure-friendly fallback
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+if cors_origins_env:
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+else:
+    # Default CORS origins for development and Azure
+    cors_origins = [
+        "http://localhost:5173",
+        "http://localhost:3000", 
+        "https://salmon-pebble-03691881e.2.azurestaticapps.net"
+    ]
+
+logger.info(f"CORS origins configured: {cors_origins}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -456,6 +466,20 @@ async def health_check():
         timestamp=datetime.now().isoformat(),
         model_loaded=model is not None
     )
+
+@app.get("/cors-debug")
+async def cors_debug():
+    """Debug endpoint to check CORS configuration"""
+    return {
+        "cors_origins": cors_origins,
+        "environment": os.getenv("ENVIRONMENT", "unknown"),
+        "cors_origins_env": os.getenv("CORS_ORIGINS", "not set")
+    }
+
+@app.options("/predict")
+async def predict_options():
+    """Handle CORS preflight for predict endpoint"""
+    return {"status": "ok"}
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict_disease(file: UploadFile = File(...)):
