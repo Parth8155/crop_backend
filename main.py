@@ -377,6 +377,19 @@ TREATMENT_DATABASE = {
 
 # Global model variable
 model = None
+recent_logs = []  # Store recent log messages for debugging
+
+def add_log_message(level, message):
+    """Add log message to recent logs for debugging"""
+    timestamp = datetime.now().isoformat()
+    recent_logs.append({
+        "timestamp": timestamp,
+        "level": level,
+        "message": message
+    })
+    # Keep only last 50 log messages
+    if len(recent_logs) > 50:
+        recent_logs.pop(0)
 
 def load_model():
     """Load the pre-trained model"""
@@ -385,23 +398,34 @@ def load_model():
         # Load your trained model
         model_path = os.getenv("MODEL_PATH", "my_model.keras")
         logger.info(f"Attempting to load model from: {model_path}")
+        add_log_message("INFO", f"Attempting to load model from: {model_path}")
         logger.info(f"Current working directory: {os.getcwd()}")
+        add_log_message("INFO", f"Current working directory: {os.getcwd()}")
         logger.info(f"File exists check: {os.path.exists(model_path)}")
+        add_log_message("INFO", f"File exists check: {os.path.exists(model_path)}")
         
         if os.path.exists(model_path):
             logger.info("Model file found, loading...")
+            add_log_message("INFO", "Model file found, loading...")
             model = tf.keras.models.load_model(model_path)
             logger.info(f"Model loaded successfully from {model_path}")
+            add_log_message("INFO", f"Model loaded successfully from {model_path}")
             logger.info(f"Model input shape: {model.input_shape}")
+            add_log_message("INFO", f"Model input shape: {model.input_shape}")
             logger.info(f"Model output shape: {model.output_shape}")
+            add_log_message("INFO", f"Model output shape: {model.output_shape}")
             return True
         else:
             logger.warning(f"Model file not found at {model_path}. Using mock predictions.")
+            add_log_message("WARNING", f"Model file not found at {model_path}. Using mock predictions.")
             logger.info(f"Files in current directory: {os.listdir('.')}")
+            add_log_message("INFO", f"Files in current directory: {os.listdir('.')}")
             return False
     except Exception as e:
         logger.error(f"Error loading model: {e}")
+        add_log_message("ERROR", f"Error loading model: {e}")
         logger.error(f"Exception type: {type(e).__name__}")
+        add_log_message("ERROR", f"Exception type: {type(e).__name__}")
         return False
 
 def preprocess_image(image_bytes):
@@ -437,6 +461,7 @@ def predict_with_model(image_array):
     try:
         if model is not None:
             logger.info("Using actual model for prediction")
+            add_log_message("INFO", "Using actual model for prediction")
             # Make prediction
             predictions = model.predict(image_array, verbose=0)
             predicted_class_index = np.argmax(predictions[0])
@@ -452,6 +477,7 @@ def predict_with_model(image_array):
                 disease_name = "unknown"
             
             logger.info(f"Prediction details:")
+            add_log_message("INFO", f"Prediction: {disease_name}, confidence: {confidence:.3f}")
             logger.info(f"  Raw prediction array shape: {predictions.shape}")
             logger.info(f"  Predicted class index: {predicted_class_index}")
             logger.info(f"  Confidence: {confidence:.6f}")
@@ -463,6 +489,7 @@ def predict_with_model(image_array):
         else:
             # Fallback to mock prediction if model not loaded
             logger.warning("Model is None, using mock prediction")
+            add_log_message("WARNING", "Model is None, using mock prediction")
             return get_mock_prediction()
     except Exception as e:
         logger.error(f"Error during model prediction: {e}")
@@ -513,6 +540,16 @@ async def cors_debug():
         "cors_origins": cors_origins,
         "environment": os.getenv("ENVIRONMENT", "unknown"),
         "cors_origins_env": os.getenv("CORS_ORIGINS", "not set")
+    }
+
+@app.get("/logs")
+async def get_recent_logs():
+    """Get recent log messages for debugging"""
+    return {
+        "total_logs": len(recent_logs),
+        "recent_logs": recent_logs[-20:],  # Last 20 logs
+        "model_loaded": model is not None,
+        "current_time": datetime.now().isoformat()
     }
 
 @app.get("/debug-mock")
