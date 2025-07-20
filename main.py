@@ -85,8 +85,8 @@ DISEASE_CLASSES = [
     "verticillium wilt", "healthy"
  ]
 # Don't sort here - sort at prediction time to match Jupyter notebook exactly
-print("Original DISEASE_CLASSES:", DISEASE_CLASSES)
-print("Sorted DISEASE_CLASSES:", sorted(DISEASE_CLASSES))
+# print("Original DISEASE_CLASSES:", DISEASE_CLASSES)
+# print("Sorted DISEASE_CLASSES:", sorted(DISEASE_CLASSES))
 
 # Treatment recommendations for your disease classes
 TREATMENT_DATABASE = {
@@ -441,13 +441,13 @@ def predict_with_model(image_array):
             else:
                 disease_name = "unknown"
             
-            logger.info(f"Prediction details:")
-            logger.info(f"  Raw prediction array shape: {predictions.shape}")
-            logger.info(f"  Predicted class index: {predicted_class_index}")
-            logger.info(f"  Confidence: {confidence:.6f}")
-            logger.info(f"  Original DISEASE_CLASSES: {DISEASE_CLASSES}")
-            logger.info(f"  Sorted class_names: {class_names}")
-            logger.info(f"  Final prediction: {disease_name}")
+            # logger.info(f"Prediction details:")
+            # logger.info(f"  Raw prediction array shape: {predictions.shape}")
+            # logger.info(f"  Predicted class index: {predicted_class_index}")
+            # logger.info(f"  Confidence: {confidence:.6f}")
+            # logger.info(f"  Original DISEASE_CLASSES: {DISEASE_CLASSES}")
+            # logger.info(f"  Sorted class_names: {class_names}")
+            # logger.info(f"  Final prediction: {disease_name}")
             
             return disease_name, confidence
         else:
@@ -463,8 +463,8 @@ def get_mock_prediction():
     
     # Select a random disease for demo
     disease_names = [
-        "leaf spot", "bacterial blight", "brown spot", "anthracnose", 
-        "leaf blight", "mosaic", "healthy"
+        "leaf spot1", "bacterial blight1", "brown spot1", "anthracnose1", 
+        "leaf blight1", "mosaic1", "healthy1"
     ]
     disease_name = random.choice(disease_names)
     confidence = random.uniform(0.75, 0.95)  # High confidence for demo
