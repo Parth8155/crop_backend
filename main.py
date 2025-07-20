@@ -391,6 +391,12 @@ def add_log_message(level, message):
     if len(recent_logs) > 50:
         recent_logs.pop(0)
 
+# Add startup logging to recent_logs for debugging
+add_log_message("INFO", f"Starting application in environment: {os.getenv('ENVIRONMENT', 'unknown')}")
+add_log_message("INFO", f"Azure instance ID: {os.getenv('WEBSITE_INSTANCE_ID', 'not set')}")
+add_log_message("INFO", f"Current working directory: {os.getcwd()}")
+add_log_message("INFO", f"Model path: {os.getenv('MODEL_PATH', 'my_model.keras')}")
+
 def load_model():
     """Load the pre-trained model"""
     global model
