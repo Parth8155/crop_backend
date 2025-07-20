@@ -83,7 +83,9 @@ DISEASE_CLASSES = [
     "fall armyworm", "grasshopper", "leaf beetle", "leaf blight",
     "leaf spot", "streak virus", "leaf curl", "septoria leaf spot",
     "verticillium wilt", "healthy"
-]
+ ]
+DISEASE_CLASSES=sorted(DISEASE_CLASSES)
+print(DISEASE_CLASSES)
 
 # Treatment recommendations for your disease classes
 TREATMENT_DATABASE = {
@@ -393,7 +395,7 @@ def load_model():
         return False
 
 def preprocess_image(image_bytes):
-    """Preprocess image for model prediction"""
+    """Preprocess image for model prediction - matches Jupyter notebook preprocessing"""
     try:
         # Convert bytes to PIL Image
         image = Image.open(io.BytesIO(image_bytes))
@@ -402,17 +404,17 @@ def preprocess_image(image_bytes):
         if image.mode != 'RGB':
             image = image.convert('RGB')
         
-        # Resize to model input size (usually 224x224 for most models)
+        # Resize to model input size (224x224)
         image = image.resize((224, 224))
         
-        # Convert to numpy array
-        img_array = np.array(image)
-        
-        # Normalize pixel values
-        img_array = img_array.astype(np.float32) / 255.0
+        # Convert to numpy array with float32 dtype
+        img_array = np.array(image).astype(np.float32)
         
         # Add batch dimension
         img_array = np.expand_dims(img_array, axis=0)
+        
+        # Apply ResNet50 preprocessing (same as Jupyter notebook)
+        img_array = tf.keras.applications.resnet50.preprocess_input(img_array)
         
         return img_array
     except Exception as e:
@@ -420,7 +422,7 @@ def preprocess_image(image_bytes):
         raise HTTPException(status_code=400, detail="Invalid image format")
 
 def predict_with_model(image_array):
-    """Make prediction using the loaded model"""
+    """Make prediction using the loaded model - matches Jupyter notebook logic"""
     global model
     try:
         if model is not None:
@@ -429,11 +431,14 @@ def predict_with_model(image_array):
             predicted_class_index = np.argmax(predictions[0])
             confidence = float(np.max(predictions[0]))
             
-            # Get disease name from index
-            if predicted_class_index < len(DISEASE_CLASSES):
-                disease_name = DISEASE_CLASSES[predicted_class_index]
+            # Get disease name from index using sorted labels (matches Jupyter notebook)
+            sorted_disease_classes = sorted(DISEASE_CLASSES)
+            if predicted_class_index < len(sorted_disease_classes):
+                disease_name = sorted_disease_classes[predicted_class_index]
             else:
                 disease_name = "unknown"
+            
+            logger.info(f"Prediction: {disease_name} (index: {predicted_class_index}, confidence: {confidence:.3f})")
             
             return disease_name, confidence
         else:
@@ -487,6 +492,18 @@ async def cors_debug():
         "cors_origins": cors_origins,
         "environment": os.getenv("ENVIRONMENT", "unknown"),
         "cors_origins_env": os.getenv("CORS_ORIGINS", "not set")
+    }
+
+@app.get("/model-debug")
+async def model_debug():
+    """Debug endpoint to check model configuration"""
+    return {
+        "model_loaded": model is not None,
+        "disease_classes": DISEASE_CLASSES,
+        "sorted_disease_classes": sorted(DISEASE_CLASSES),
+        "total_classes": len(DISEASE_CLASSES),
+        "model_path": os.getenv("MODEL_PATH", "my_model.keras"),
+        "preprocessing": "ResNet50 preprocess_input"
     }
 
 @app.options("/predict")
