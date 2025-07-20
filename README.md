@@ -62,13 +62,8 @@ The model can detect the following 18 disease conditions:
    venv\Scripts\activate
    
    # Start server
-   python start_server.py
-   ```
-
-4. **Access API Documentation**:
-   - Swagger UI: `http://localhost:8000/docs`
-   - ReDoc: `http://localhost:8000/redoc`
-   - Health Check: `http://localhost:8000/`
+   uvicorn main:app --reload
+```
 
 ## API Endpoints
 
